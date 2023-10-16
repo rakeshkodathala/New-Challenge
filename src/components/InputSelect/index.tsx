@@ -1,5 +1,6 @@
 import Downshift from "downshift"
-import { useCallback, useState } from "react"
+import { useCallback, useState, useEffect, useRef } from "react"
+
 import classNames from "classnames"
 import { DropdownPosition, GetDropdownPositionFn, InputSelectOnChange, InputSelectProps } from "./types"
 
@@ -18,6 +19,8 @@ export function InputSelect<TItem>({
     left: 0,
   })
 
+  const inputRef = useRef(null)
+
   const onChange = useCallback<InputSelectOnChange<TItem>>(
     (selectedItem) => {
       if (selectedItem === null) {
@@ -29,6 +32,42 @@ export function InputSelect<TItem>({
     },
     [consumerOnChange]
   )
+
+  const getDropdownPosition: GetDropdownPositionFn = (target) => {
+    if (target instanceof Element) {
+      const { top, left } = target.getBoundingClientRect()
+      const { scrollY } = window
+      return {
+        top: scrollY + top + 63, // Adjust for desired positioning
+        left,
+      }
+    }
+
+    return { top: 0, left: 0 }
+  }
+
+  useEffect(() => {
+    // Function to calculate and set dropdown position
+    const updateDropdownPosition = () => {
+      if (inputRef.current) {
+        const inputRect = inputRef.current.getBoundingClientRect()
+        setDropdownPosition({
+          top: window.scrollY + inputRect.bottom,
+          left: inputRect.left,
+        })
+      }
+    }
+
+    updateDropdownPosition() // Initial position calculation
+
+    // Attach a scroll event listener to update the dropdown position on scroll
+    window.addEventListener("scroll", updateDropdownPosition)
+
+    return () => {
+      // Remove the event listener when the component unmounts
+      window.removeEventListener("scroll", updateDropdownPosition)
+    }
+  }, [])
 
   return (
     <Downshift<TItem>
@@ -115,17 +154,4 @@ export function InputSelect<TItem>({
       }}
     </Downshift>
   )
-}
-
-const getDropdownPosition: GetDropdownPositionFn = (target) => {
-  if (target instanceof Element) {
-    const { top, left } = target.getBoundingClientRect()
-    const { scrollY } = window
-    return {
-      top: scrollY + top + 63,
-      left,
-    }
-  }
-
-  return { top: 0, left: 0 }
 }
